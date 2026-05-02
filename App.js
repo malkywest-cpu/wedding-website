@@ -1,4 +1,4 @@
-// RSVP Component
+ // RSVP Component
 const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('submitting');
