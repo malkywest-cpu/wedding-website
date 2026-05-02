@@ -1,208 +1,49 @@
 // RSVP Component
-function RSVP() {
-    const [status, setStatus] = React.useState('idle');
-    const [numGuests, setNumGuests] = React.useState(1);
-    const [guests, setGuests] = React.useState([{ name: '', attending: 'yes', dietary: '' }]);
-    const [hasPlusOne, setHasPlusOne] = React.useState('no');
-    const [plusOne, setPlusOne] = React.useState({ name: '', attending: 'yes', dietary: '' });
-    const [songRequest, setSongRequest] = React.useState('');
-
-    const handleNumGuestsChange = (e) => {
-        const count = parseInt(e.target.value, 10) || 1;
-        setNumGuests(count);
-        setGuests(prev => {
-            const newGuests = [...prev];
-            while (newGuests.length < count) {
-                newGuests.push({ name: '', attending: 'yes', dietary: '' });
-            }
-            return newGuests.slice(0, count);
-        });
-    };
-
-    const updateGuest = (index, field, value) => {
-        const newGuests = [...guests];
-        newGuests[index][field] = value;
-        setGuests(newGuests);
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setStatus('submitting');
-        
-        try {
-            const allNames = guests.map((g, i) => `${g.name || `Guest ${i+1}`} (${g.attending})`);
-            if (hasPlusOne === 'yes') {
-                allNames.push(`Plus One: ${plusOne.name || 'Unnamed'} (${plusOne.attending})`);
-            }
-            const nameStr = allNames.join(', ');
-
-            const anyAttending = guests.some(g => g.attending === 'yes') || (hasPlusOne === 'yes' && plusOne.attending === 'yes');
-            const attendingStr = anyAttending ? 'yes' : 'no';
-
-            const dietaryList = guests
-                .filter(g => g.dietary && g.dietary.trim() !== '')
-                .map((g, i) => `${g.name || `Guest ${i+1}`}: ${g.dietary}`);
-            if (hasPlusOne === 'yes' && plusOne.dietary && plusOne.dietary.trim() !== '') {
-                dietaryList.push(`Plus One (${plusOne.name || 'Unnamed'}): ${plusOne.dietary}`);
-            }
-            const dietaryStr = dietaryList.length > 0 ? dietaryList.join(' | ') : 'None';
-
-            const data = {
-                Name: nameStr,
-                Attending: attendingStr,
-                DietaryRequirements: dietaryStr,
-                SongRequest: songRequest
-            };
-
-            console.log('RSVP Data:', data);
-            // To integrate with backend: await fetch('/api/rsvp', { method: 'POST', body: JSON.stringify(data) })
-            
-            setStatus('success');
-        } catch (error) {
-            console.error('RSVP submission error:', error);
-            setStatus('error');
+const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus('submitting');
+    
+    try {
+        const allNames = guests.map((g, i) => `${g.name || `Guest ${i+1}`} (${g.attending})`);
+        if (hasPlusOne === 'yes') {
+            allNames.push(`Plus One: ${plusOne.name || 'Unnamed'} (${plusOne.attending})`);
         }
-    };
+        const nameStr = allNames.join(', ');
 
-    if (status === 'success') {
-        return (
-            <div className="max-w-2xl mx-auto py-20 px-6 text-center animate-fade-in">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[var(--blush-pink)] mb-6">
-                    <div className="text-4xl text-white">✓</div>
-                </div>
-                <h2 className="text-3xl font-serif text-[var(--silver-dark)] mb-4">Thank You!</h2>
-                <p className="text-lg text-gray-600">Your RSVP has been received. We can't wait to celebrate with you!</p>
-                <button 
-                    onClick={() => setStatus('idle')}
-                    className="mt-8 text-[var(--silver-dark)] hover:text-gray-800 underline transition-colors"
-                >
-                    Submit another response
-                </button>
-            </div>
+        const anyAttending = guests.some(g => g.attending === 'yes') || (hasPlusOne === 'yes' && plusOne.attending === 'yes');
+        const attendingStr = anyAttending ? 'yes' : 'no';
+
+        const dietaryList = guests
+            .filter(g => g.dietary && g.dietary.trim() !== '')
+            .map((g, i) => `${g.name || `Guest ${i+1}`}: ${g.dietary}`);
+        if (hasPlusOne === 'yes' && plusOne.dietary && plusOne.dietary.trim() !== '') {
+            dietaryList.push(`Plus One (${plusOne.name || 'Unnamed'}): ${plusOne.dietary}`);
+        }
+        const dietaryStr = dietaryList.length > 0 ? dietaryList.join(' | ') : 'None';
+
+        // 👇 THIS is what gets sent to EmailJS
+        const templateParams = {
+            name: nameStr,
+            attendance: attendingStr,
+            dietary: dietaryStr,
+            song: songRequest || 'None'
+        };
+
+        await emailjs.send(
+            "service_inp87mp",
+            "template_9ea58h2",
+            templateParams
         );
+
+        setStatus('success');
+
+    } catch (error) {
+        console.error('RSVP submission error:', error);
+        setStatus('error');
     }
+};
 
-    return (
-        <div className="max-w-2xl mx-auto py-12 px-6 animate-fade-in" id="rsvp">
-            <div className="text-center mb-10">
-                <h2 className="text-4xl font-serif text-[var(--silver-dark)] mb-4">RSVP</h2>
-                <div className="w-24 h-1 bg-[var(--blush-pink)] mx-auto mb-6"></div>
-                <p className="text-lg text-gray-600">
-                    Kindly respond by Monday 22nd June, 2026.
-                </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-[var(--silver)]">
-                {status === 'error' && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-md text-center">
-                        Sorry, there was an error submitting your RSVP. Please try again.
-                    </div>
-                )}
-                
-                <div className="space-y-8">
-                    <div className="border-b border-gray-100 pb-6">
-                        <label className="block text-gray-700 font-semibold mb-2">Number of Guests in your Party</label>
-                        <select 
-                            value={numGuests} 
-                            onChange={handleNumGuestsChange}
-                            className="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--blush-pink)] focus:border-transparent transition-all"
-                        >
-                            {[1, 2, 3, 4, 5, 6].map(num => (
-                                <option key={num} value={num}>{num}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="space-y-6">
-                        {guests.map((guest, index) => (
-                            <div key={index} className="bg-gray-50 p-5 rounded-md border border-gray-200">
-                                <h3 className="font-serif font-semibold text-lg text-[var(--silver-dark)] mb-4">Guest {index + 1}</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-gray-700 text-sm font-semibold mb-1">Full Name</label>
-                                        <input 
-                                            required 
-                                            type="text" 
-                                            value={guest.name}
-                                            onChange={(e) => updateGuest(index, 'name', e.target.value)}
-                                            className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--blush-pink)] transition-all"
-                                            placeholder="e.g. John Smith"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-gray-700 text-sm font-semibold mb-1">Attending?</label>
-                                        <div className="flex space-x-6">
-                                            <label className="flex items-center space-x-2 cursor-pointer">
-                                                <input type="radio" checked={guest.attending === 'yes'} onChange={() => updateGuest(index, 'attending', 'yes')} className="text-[var(--blush-pink)] focus:ring-[var(--blush-pink)]" />
-                                                <span>Joyfully Accept</span>
-                                            </label>
-                                            <label className="flex items-center space-x-2 cursor-pointer">
-                                                <input type="radio" checked={guest.attending === 'no'} onChange={() => updateGuest(index, 'attending', 'no')} className="text-[var(--silver-dark)] focus:ring-[var(--silver-dark)]" />
-                                                <span>Regretfully Decline</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    {guest.attending === 'yes' && (
-                                        <div>
-                                            <label className="block text-gray-700 text-sm font-semibold mb-1">Dietary Requirements</label>
-                                            <input 
-                                                type="text" 
-                                                value={guest.dietary}
-                                                onChange={(e) => updateGuest(index, 'dietary', e.target.value)}
-                                                className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--blush-pink)] transition-all"
-                                                placeholder="Vegetarian, allergies, or 'None'"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="border-t border-gray-100 pt-6">
-                        <label className="block text-gray-700 font-semibold mb-2">Have you been allocated a plus one?</label>
-                        <div className="flex space-x-6 mb-4">
-                            <label className="flex items-center space-x-2 cursor-pointer">
-                                <input type="radio" checked={hasPlusOne === 'yes'} onChange={() => setHasPlusOne('yes')} className="text-[var(--blush-pink)] focus:ring-[var(--blush-pink)]" />
-                                <span>Yes</span>
-                            </label>
-                            <label className="flex items-center space-x-2 cursor-pointer">
-                                <input type="radio" checked={hasPlusOne === 'no'} onChange={() => setHasPlusOne('no')} className="text-[var(--silver-dark)] focus:ring-[var(--silver-dark)]" />
-                                <span>No</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div className="border-t border-gray-100 pt-6">
-                        <label className="block text-gray-700 font-semibold mb-2">Song Request</label>
-                        <p className="text-sm text-gray-500 mb-2">One song request per party to get everyone on the dance floor!</p>
-                        <input 
-                            type="text" 
-                            value={songRequest}
-                            onChange={(e) => setSongRequest(e.target.value)}
-                            className="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--blush-pink)] focus:border-transparent transition-all"
-                            placeholder="What gets you on the dance floor?"
-                        />
-                    </div>
-
-                    <button 
-                        type="submit" 
-                        disabled={status === 'submitting'}
-                        className="w-full btn-primary flex justify-center items-center mt-4"
-                    >
-                        {status === 'submitting' ? (
-                            <span className="flex items-center">
-                                ⏳ Sending...
-                            </span>
-                        ) : 'Send RSVP'}
-                    </button>
-                </div>
-            </form>
-        </div>
-    );
-}
-
-// Venue Details Component
+ Venue Details Component
 function VenueDetails() {
     return (
         <div className="max-w-4xl mx-auto py-12 px-6 animate-fade-in" id="venue">
@@ -495,4 +336,3 @@ function App() {
 // Render the app
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
-          
